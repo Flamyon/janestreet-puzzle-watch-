@@ -2,7 +2,7 @@ name: JS Puzzle Watch
 
 on:
   schedule:
-    - cron: "* * * * *"
+    - cron: "*/6 * * * *"
   workflow_dispatch: {}
 
 jobs:
