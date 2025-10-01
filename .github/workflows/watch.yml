@@ -1,16 +1,26 @@
-# .github/workflows/watch.yml
 name: JS Puzzle Watch
+
 on:
   schedule:
-    - cron: "*/5 * 1,2 * *"
+    - cron: "*/5 * 1,2 * *"   # cada 5 min, días 1 y 2
   workflow_dispatch: {}
+
 jobs:
   watch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - run: pip install -r requirements.txt
-      - env: { APPRISE_URLS: ${{ secrets.APPRISE_URLS }} }
-        run: python watcher.py
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run watcher
+        env:
+          APPRISE_URLS: ${{ secrets.APPRISE_URLS }}
+        run: python watch.py   # o 'python watcher.py' si ese es tu fichero
