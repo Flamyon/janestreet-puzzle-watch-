@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 import apprise
@@ -9,12 +9,9 @@ import apprise
 URL = "https://www.janestreet.com/puzzles/current-puzzle/"
 STATE_FILE = ".puzzle_month_state.txt"
 UA = "Mozilla/5.0 (compatible; JS-Puzzle-Watch/1.0)"
-APPRISE_URLS = os.getenv("APPRISE_URLS", "").strip()  # p.ej. "mailto://... , tgram://TOKEN/CHATID"
+APPRISE_URLS = os.getenv("APPRISE_URLS", "").strip()  # p.ej.: tgram://TOKEN/CHATID
 
 def notify(title: str, body: str):
-    if not APPRISE_URLS:
-        print("⚠️  APPRISE_URLS vacío → no se envía notificación.")
-        return
     apobj = apprise.Apprise()
     # Permite múltiples destinos separados por coma o nueva línea
     for url in [u.strip() for u in APPRISE_URLS.replace("\n", ",").split(",") if u.strip()]:
@@ -50,34 +47,51 @@ def write_state(month: str, year: str):
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         f.write(f"{month},{year}")
 
+def now_local_str():
+    # Hora local del sistema (útil si corres esto en tu máquina/servidor en Europe/Madrid)
+    return datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+
 def main():
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")
+    if not APPRISE_URLS:
+        print("APPRISE_URLS vacío: define p.ej. tgram://TOKEN/CHATID")
+        sys.exit(1)
+
+    timestamp = now_local_str()
+
     try:
         cur_m, cur_y = fetch_month_year()
     except Exception as e:
-        print(f"[{now}] Error: {e}")
+        # Notificamos también errores para enterarte si rompe el scrapping
+        notify(
+            "JS Puzzle Watch: ERROR",
+            f"[{timestamp}] Error al obtener puzzle_month: {e}\nURL: {URL}"
+        )
+        print(f"[{timestamp}] Error: {e}")
         sys.exit(1)
 
     prev = read_prev()
     if prev is None:
         write_state(cur_m, cur_y)
-        print(f"[{now}] Estado inicial guardado: month={cur_m}, year={cur_y}")
+        msg = (f"[{timestamp}] Estado inicial guardado.\n"
+               f"month={cur_m} year={cur_y}\nURL: {URL}")
+        notify("JS Puzzle Watch: Estado inicial", msg)
+        print(msg)
         return
 
     prev_m, prev_y = prev
     if cur_m != prev_m:
         write_state(cur_m, cur_y)
-        title = "Jane Street Puzzle: puzzle_month ha cambiado"
-        body = (
-            f"Anterior: {prev_m} {('(year '+prev_y+')' if prev_y else '')}\n"
-            f"Actual:   {cur_m} {('(year '+cur_y+')' if cur_y else '')}\n\n"
-            f"Página: {URL}\n"
-            f"Fecha (UTC): {now}\n"
-        )
-        notify(title, body)
-        print(f"[{now}] Cambio detectado → notificado.")
+        msg = (f"[{timestamp}] CAMBIO DETECTADO\n"
+               f"Anterior: month={prev_m} year={prev_y}\n"
+               f"Actual:   month={cur_m} year={cur_y}\nURL: {URL}")
+        notify("JS Puzzle Watch: ¡Mes actualizado!", msg)
+        print(msg)
     else:
-        print(f"[{now}] Sin cambios (month={cur_m}).")
+        # NOTIFICACIÓN TAMBIÉN CUANDO NO CAMBIA
+        msg = (f"[{timestamp}] Sin cambios\n"
+               f"month={cur_m} year={cur_y}\nURL: {URL}")
+        notify("JS Puzzle Watch: sin cambios", msg)
+        print(msg)
 
 if __name__ == "__main__":
     main()
