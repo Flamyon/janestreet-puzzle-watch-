@@ -1,44 +1,16 @@
+# .github/workflows/watch.yml
 name: JS Puzzle Watch
-
 on:
   schedule:
-    - cron: "*/5 *"   # cada 5 min, días 1 y 2
+    - cron: "*/5 * 1,2 * *"
   workflow_dispatch: {}
-
 jobs:
   watch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-      # Usa 3.11 o 3.12; cualquiera vale
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Cache state
-        uses: actions/cache@v4
-        with:
-          path: .puzzle_month_state.txt
-          key: js-state-${{ hashFiles('.puzzle_month_state.txt') }}
-          restore-keys: |
-            js-state-
-
-      - name: Install deps
-        run: pip install -r requirements.txt
-
-      - name: Run watcher
-        env:
-          APPRISE_URLS: ${{ secrets.APPRISE_URLS }}
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - env: { APPRISE_URLS: ${{ secrets.APPRISE_URLS }} }
         run: python watcher.py
-
-      - name: Save state
-        if: always()
-        uses: actions/cache@v4
-        with:
-          path: .puzzle_month_state.txt
-          key: js-state-${{ hashFiles('.puzzle_month_state.txt') }}
-          restore-keys: |
-            js-state-
