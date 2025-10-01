@@ -3,7 +3,6 @@ name: JS Puzzle Watch
 on:
   schedule:
     - cron: "*/6 * * * *"
-  workflow_dispatch: {}
 
 jobs:
   watch:
